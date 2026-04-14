@@ -1,4 +1,5 @@
 import json
+from urllib.parse import urljoin
 from lxml import html
 import requests
 import mysql.connector
@@ -79,6 +80,9 @@ CREATE TABLE IF NOT EXISTS books (
             for i in range(len(book_name)):
                 temp = book_name[i].replace("\n","").strip()
                 newurl = f"{url}{book_link[i]}".replace("../../","catalogue/")
+
+                newurl1 = urljoin(url1, book_link[i]) # this is how we can use urljoin
+               
                 cursor.execute("""
                     INSERT INTO books (book_name, book_url)
                     VALUES (%s, %s)
@@ -91,66 +95,100 @@ CREATE TABLE IF NOT EXISTS books (
             
 
 
-def get_all_link_by_category():
+def get_all_book_link_by_category():
 
-    if data.status_code == 200 :
+    cursor.execute("""
+    CREATE TABLE IF NOT EXISTS books_with_category (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        book_name VARCHAR(255),
+        book_url TEXT,
+        category_name VARCHAR(255),
+        category_id INT,
+        scraped_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (category_id) REFERENCES categories(id)
+    )
+    """)
 
-        cursor.execute("""
-CREATE TABLE IF NOT EXISTS books_with_category (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    book_name VARCHAR(255),
-    book_url TEXT,
-    category_name VARCHAR(255),
-    scraped_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-)
-""")
+    cursor.execute("SELECT category_name, category_url, id FROM categories")
+    categories = cursor.fetchall()
 
-        cursor.execute(""" select category_name,category_url from categories """)
-        categories = cursor.fetchall()
-        for i in categories:
-            category_name = i[0]
-            category_url = i[1]
-            data2 = requests.get(category_url,headers=header)
-            root2 = html.fromstring(data2.content)
+    for category in categories:
+        category_name = category[0]
+        category_url = category[1]
+        category_id = category[2]
 
-            
-            page = root2.xpath("//ul[contains(@class,'pager')]/li[contains(@class,'current')]/text()")
-            if len(page) > 0 :
-                pages = int(page[0].split()[-1])
-           
-                for i in range(1,pages+1):
-                    page_url = category_url.replace("index.html",f"page-{i}.html")
-                    data3 = requests.get(page_url,headers=header)
-                    root3 = html.fromstring(data3.content)
-                    book_name = root3.xpath("//article[contains(@class,'product_pod')]/h3/a/@title")
-                    book_link = root3.xpath("//article[contains(@class,'product_pod')]/h3/a/@href")
+        response = requests.get(category_url, headers=header)
+        root = html.fromstring(response.content)
 
-                    for i in range(len(book_name)):
-                        temp = book_name[i].replace("\n","").strip()
-                        newurl = f"{url}{book_link[i]}".replace("../../../","catalogue/")
+        page_text = root.xpath("//ul[contains(@class,'pager')]/li[contains(@class,'current')]/text()")
 
-                        cursor.execute("""
-                            INSERT INTO books_with_category (book_name, book_url, category_name)
-                            VALUES (%s, %s, %s)
-                        """, (temp, newurl, category_name))
-                        conn.commit()
-                       
-                      
+        total_pages = 1
+        if page_text:
+            total_pages = int(page_text[0].split()[-1])
+
+        for page_num in range(1, total_pages + 1):
+
+            if page_num == 1:
+                page_url = category_url
             else:
-                book_name = root2.xpath("//article[contains(@class,'product_pod')]/h3/a/@title")
-                book_link = root2.xpath("//article[contains(@class,'product_pod')]/h3/a/@href")  
+                page_url = category_url.replace("index.html", f"page-{page_num}.html")
 
-                for i in range(len(book_name)):
-                    temp = book_name[i].replace("\n","").strip()
-                    newurl = f"{url}{book_link[i]}".replace("../../../","catalogue/")
+            page_response = requests.get(page_url, headers=header)
+            page_root = html.fromstring(page_response.content)
 
-                    cursor.execute("""
-                        INSERT INTO books_with_category (book_name, book_url, category_name)
-                        VALUES (%s, %s, %s)
-                    """, (temp, newurl, category_name))
-                    conn.commit()
-                    
-        cursor.close()
-        conn.close()
+            book_names = page_root.xpath("//article[contains(@class,'product_pod')]/h3/a/@title")
+            book_links = page_root.xpath("//article[contains(@class,'product_pod')]/h3/a/@href")
 
-get_all_link_by_category()
+            for name, link in zip(book_names, book_links):
+
+                full_link = urljoin(page_url, link)
+
+                cursor.execute("""
+                    INSERT INTO books_with_category
+                    (book_name, book_url, category_name, category_id)
+                    VALUES (%s, %s, %s, %s)
+                """, (name.strip(), full_link, category_name, category_id))
+
+    conn.commit()
+
+    print("All Books Inserted Successfully")
+
+
+
+
+def product_page_data(url):
+    response = requests.get(url, headers=header)
+    root = html.fromstring(response.text)
+    
+
+    book_title = root.xpath("//div[contains(@class,'product_main')]/h1/text()")[0]
+    book_price = root.xpath("//div[contains(@class,'product_main')]/p[contains(@class,'price_color')]/text()")[0]
+    instock = int(root.xpath("//div[contains(@class,'product_main')]/p[contains(@class,'instock')]/text()")[1].strip().replace("In stock (", "").replace("available)", "").strip())
+
+    description = root.xpath("//div[@id='product_description']/following-sibling::p/text()")
+    if description:
+        description = description[0].strip()
+    
+    rows = root.xpath("//table[contains(@class,'table')]//tr")
+    product_info={}
+    for row in rows:
+        key = row.xpath("./th/text()")[0].strip()
+        value = row.xpath("./td/text()")[0].strip()
+        product_info[key] = value
+
+
+
+    output = {
+        "book_title": book_title,
+        "book_price": book_price,
+        "instock": instock,
+        "description": description,
+        "product_info": product_info
+    }
+
+
+    with open(f"book_{book_title}_details.json", "a", encoding="utf-8") as f:
+        json.dump(output, f, ensure_ascii=False, indent=4)
+        
+
+get_all_books_links()
