@@ -92,6 +92,7 @@ CREATE TABLE IF NOT EXISTS books (
 
 
 def get_all_link_by_category():
+
     if data.status_code == 200 :
 
         cursor.execute("""
@@ -106,24 +107,50 @@ CREATE TABLE IF NOT EXISTS books_with_category (
 
         cursor.execute(""" select category_name,category_url from categories """)
         categories = cursor.fetchall()
-        print(len(categories))
         for i in categories:
             category_name = i[0]
             category_url = i[1]
             data2 = requests.get(category_url,headers=header)
             root2 = html.fromstring(data2.content)
 
-            book_name = root2.xpath("//article[contains(@class,'product_pod')]/h3/a/@title")
-            book_link = root2.xpath("//article[contains(@class,'product_pod')]/h3/a/@href")
-            for i in range(len(book_name)):
-                temp = book_name[i].replace("\n","").strip()
-                newurl = f"{url}{book_link[i]}".replace("../../../","catalogue/")
-                print(f"Category : {category_name} , Book Name : {temp} , Book Link : {newurl}")
-                cursor.execute("""
-                    INSERT INTO books_with_category (book_name, book_url, category_name)
-                    VALUES (%s, %s, %s)
-                """, (temp, newurl, category_name))
-                conn.commit()
+            
+            page = root2.xpath("//ul[contains(@class,'pager')]/li[contains(@class,'current')]/text()")
+            if len(page) > 0 :
+                pages = int(page[0].split()[-1])
+           
+                for i in range(1,pages+1):
+                    page_url = category_url.replace("index.html",f"page-{i}.html")
+                    data3 = requests.get(page_url,headers=header)
+                    root3 = html.fromstring(data3.content)
+                    book_name = root3.xpath("//article[contains(@class,'product_pod')]/h3/a/@title")
+                    book_link = root3.xpath("//article[contains(@class,'product_pod')]/h3/a/@href")
+
+                    for i in range(len(book_name)):
+                        temp = book_name[i].replace("\n","").strip()
+                        newurl = f"{url}{book_link[i]}".replace("../../../","catalogue/")
+
+                        cursor.execute("""
+                            INSERT INTO books_with_category (book_name, book_url, category_name)
+                            VALUES (%s, %s, %s)
+                        """, (temp, newurl, category_name))
+                        conn.commit()
+                       
+                      
+            else:
+                book_name = root2.xpath("//article[contains(@class,'product_pod')]/h3/a/@title")
+                book_link = root2.xpath("//article[contains(@class,'product_pod')]/h3/a/@href")  
+
+                for i in range(len(book_name)):
+                    temp = book_name[i].replace("\n","").strip()
+                    newurl = f"{url}{book_link[i]}".replace("../../../","catalogue/")
+
+                    cursor.execute("""
+                        INSERT INTO books_with_category (book_name, book_url, category_name)
+                        VALUES (%s, %s, %s)
+                    """, (temp, newurl, category_name))
+                    conn.commit()
+                    
         cursor.close()
         conn.close()
 
+get_all_link_by_category()
