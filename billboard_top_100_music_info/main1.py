@@ -35,18 +35,14 @@ CREATE TABLE IF NOT EXISTS billboard_top_1001 (
 
 
 def first_or_none(values, strip=True):
-    """
-    Safely return first element from xpath result list
-    """
+
     if not values:
         return None
     return values[0].strip() if strip and isinstance(values[0], str) else values[0]
 
 
 def parse_int(value):
-    """
-    Convert string to int safely
-    """
+
     if value in (None, "", "-"):
         return None
     try:
