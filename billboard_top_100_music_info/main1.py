@@ -1,3 +1,7 @@
+
+# ai generated code just for understaing purpose, not for execution
+
+
 import requests
 from lxml import html
 import mysql.connector
@@ -83,9 +87,7 @@ if response.status_code == 200:
     part.strip() for part in artist_parts if part.strip()
 )
 
-            # --------------------------
-            # STATS (LW / PEAK / WEEKS)
-            # --------------------------
+
             stats = {}
 
             stat_rows = item.xpath(
@@ -103,9 +105,7 @@ if response.status_code == 200:
             peak = parse_int(stats.get("PEAK"))
             weeks = parse_int(stats.get("WEEKS"))
 
-            # --------------------------
-            # DEBUT / PEAK DETAILS
-            # --------------------------
+
             debut_position = parse_int(
                 first_or_none(
                     item.xpath(
@@ -138,9 +138,7 @@ if response.status_code == 200:
                 )
             )
 
-            # --------------------------
-            # AWARDS
-            # --------------------------
+
             awards_list = item.xpath(
                 './/div[contains(@class,"o-chart-awards-list")]//p/text()'
             )
@@ -191,4 +189,4 @@ if response.status_code == 200:
 cursor.close()
 connect.close()
 
-print("Scraping Completed Successfully.")
+print("Done")

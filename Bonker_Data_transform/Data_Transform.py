@@ -18,19 +18,18 @@ for product in data["products"]:
     full_name = first_variant.get("name")
     product_name = full_name.split(" - ")[0]
 
-    vendor = product.get("vendor")
+    vendor = product.get("vendor")  
 
 
     product_price = int(first_variant.get("price")) / 100
 
-    # Extract variant options (Size)
     sizes = []
     variants_list = []
 
     for v in product.get("variants", []):
         variant_id = v.get("id")
         variant_price = int(v.get("price")) / 100
-        variant_name = v.get("public_title")  # XS, S, M...
+        variant_name = v.get("public_title")  
 
         sizes.append(variant_name)
 
@@ -60,4 +59,4 @@ for product in data["products"]:
 with open("output.json", "w", encoding="utf-8") as f:
     json.dump(output, f, indent=4)
 
-print("✅ Done! Output saved in output.json")
+print("Done")

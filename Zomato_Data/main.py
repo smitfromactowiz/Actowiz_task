@@ -58,13 +58,11 @@ if opening_hours:
         else:
             open_time, close_time = None, None
 
-        # Handle days (Mon-Sun → all days)
         days_list = [
             "monday", "tuesday", "wednesday",
             "thursday", "friday", "saturday", "sunday"
         ]
 
-        # Assign timings
         for day in days_list:
             timings[day] = {
                 "open": open_time,
@@ -73,7 +71,6 @@ if opening_hours:
 
 
 
-# -------- Menu Extraction --------
 menu_categories = []
 
 menus = data.get("page_data", {}).get("order", {}).get("menuList", {}).get("menus", [])
@@ -113,15 +110,6 @@ for menu in menus:
         menu_categories.append(category_obj)
 
 
-# print(restaurant_name)
-# print(restaurant_id)
-# print(restaurant_url)
-# print(restaurant_contact)
-# print(location)
-# print(cuisines)
-# print(timings)
-
-# print(menu_categories)
 
 output = {
     "restaurant_id": restaurant_id,
@@ -134,10 +122,8 @@ output = {
     "timings": timings,
     "menu_categories": menu_categories
 }
-# print(json.dumps(output, indent=2, ensure_ascii=False))
 
 
 with open("output_zomato1.json", "w", encoding="utf-8") as f:
     json.dump(output, f, indent=4)
 
-print("✅ Done! Output saved in output.json")

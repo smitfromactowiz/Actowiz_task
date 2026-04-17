@@ -2,7 +2,6 @@ from pydantic import BaseModel
 from typing import List, Optional
 
 
-# -------- Item Model --------
 class Item(BaseModel):
     item_id: Optional[str]
     item_name: Optional[str]
@@ -13,13 +12,11 @@ class Item(BaseModel):
     is_veg: bool
 
 
-# -------- Menu Category --------
 class MenuCategory(BaseModel):
     category_name: Optional[str]
     items: List[Item]
 
 
-# -------- Address --------
 class AddressInfo(BaseModel):
     full_address: Optional[str]
     region: Optional[str]
@@ -28,13 +25,11 @@ class AddressInfo(BaseModel):
     state: Optional[str]
 
 
-# -------- Cuisine --------
 class Cuisine(BaseModel):
     name: str
     url: Optional[str]
 
 
-# -------- Timing --------
 class DayTiming(BaseModel):
     open: Optional[str]
     close: Optional[str]
@@ -50,7 +45,6 @@ class Timings(BaseModel):
     sunday: DayTiming
 
 
-# -------- Main Restaurant Model --------
 class Restaurant(BaseModel):
     restaurant_id: Optional[int]
     restaurant_name: Optional[str]
