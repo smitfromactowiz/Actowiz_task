@@ -151,30 +151,35 @@ def get_movie_data(movie_url):
 
 create_db()    
 all_url = main("https://www.rottentomatoes.com/browse/movies_in_theaters/sort:newest")
+for i in all_url:
+    data = (get_movie_data(i))
+    with open("output_movie.json","w",encoding="utf-8") as f:
+        json.dump(data,f)
+    break
 
-with ThreadPoolExecutor(max_workers=5) as e:
-    result = e.map(get_movie_data,all_url)
-    conn,cur = connction()
-    for r in result:
-        if not r:
-            continue
-        cur.execute('''
-        insert into movies(movie_name,score,description,img,reviews_count,videos,want_to_know,cast_and_crew,all_reviews) values(%s,%s,%s,%s,%s,%s,%s,%s,%s)
-        ''',(
-        r.get('movie_name'),
-        r.get('score'),
-        r.get('desc'),
-        r.get('img'),
-        r.get('reviews_count'),
-        json.dumps(r.get('videos')),
-        r.get('want_to_know'),
-        json.dumps(r.get('cast')),
-        json.dumps(r.get('all_reviews'))
+# with ThreadPoolExecutor(max_workers=5) as e:
+#     result = e.map(get_movie_data,all_url)
+#     conn,cur = connction()
+#     for r in result:
+#         if not r:
+#             continue
+#         cur.execute('''
+#         insert into movies(movie_name,score,description,img,reviews_count,videos,want_to_know,cast_and_crew,all_reviews) values(%s,%s,%s,%s,%s,%s,%s,%s,%s)
+#         ''',(
+#         r.get('movie_name'),
+#         r.get('score'),
+#         r.get('desc'),
+#         r.get('img'),
+#         r.get('reviews_count'),
+#         json.dumps(r.get('videos')),
+#         r.get('want_to_know'),
+#         json.dumps(r.get('cast')),
+#         json.dumps(r.get('all_reviews'))
 
-        )) 
-    conn.commit()
+#         )) 
+#     conn.commit()
     
-print("all done")
-conn.close()
+# print("all done")
+# conn.close()
 
 
