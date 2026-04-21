@@ -5,9 +5,9 @@ import json
 import requests as re
 from db import *
 from concurrent.futures import ThreadPoolExecutor
+import time
 
-
-
+st = time.time()
 def find_url(url):
     res = re.get(url)
     all_json = json.loads(res.text)
@@ -51,7 +51,7 @@ def main(url):
             
         for i in other_page.get('grid').get('list'):
             all_movie_data.append(f"https://www.rottentomatoes.com{i.get('mediaUrl').strip()}")
-
+    
     return all_movie_data
     
 
@@ -62,7 +62,7 @@ def get_movie_data(movie_url):
     res = re.get(movie_url,headers=headers)
     tree = html.fromstring(res.text)
     movie_name =tree.xpath("string(//rt-text[@size='1.25,1.75']/text())")
-    img = tree.xpath("//div[contains(@class,'media-scorecard')]//@src")[0]
+    img = tree.xpath("//div[contains(@class,'media-scorecard')]//@src")[0].split('v2/')[-1:][0]
     tometometer = tree.xpath("string(//rt-text[@slot='critics-score'])") or '0%'
     popcornmeter = tree.xpath(".//div[contains(@class,'media-scorecard')]//rt-text/text()")[2]
     review_count = int(tree.xpath(".//div[contains(@id,'movie-overview')]//rt-link//text()")[0].split()[0].strip())
@@ -74,9 +74,8 @@ def get_movie_data(movie_url):
     crew_and_cast = tree1.xpath('.//cast-and-crew-card')
     cast_and_crew = {}
     for i in crew_and_cast:
-        # cast_and_crew['name'] : i.xpath('//rt-text[@slot="title"]')
         name = i.xpath('.//rt-text[@slot="title"]/text()')[0].strip()
-        img = i.xpath(".//rt-img[@slot='poster']/@src")[0].strip()
+        img = i.xpath("string(.//rt-img[@slot='poster']/@src)").split('v2/')[-1]
         credit = i.xpath(".//rt-text[@slot='credits']/text()")
         credit_string = ""
         for i in credit:
@@ -101,13 +100,13 @@ def get_movie_data(movie_url):
         title = v.xpath(".//a[@data-qa='video-item-title']/text()")
         link = v.xpath(".//a[@data-qa='video-item-title']/@href")
         duration = v.xpath(".//span[@data-qa='video-item-duration']/text()")
-        thumbnail = v.xpath(".//img[@data-qa='video-img']/@srcset")
-
+        thumbnail = v.xpath("string(.//img[@data-qa='video-img']/@srcset)").split('v2/')[-1]
+        
         videos.append({
             "title": title[0].strip() if title else None,
             "url": urljoin(base_url, link[0]) if link else None,
             "duration": duration[0].strip() if duration else None,
-            "thumbnail": thumbnail[0] if thumbnail else None
+            "thumbnail": thumbnail if thumbnail else None
         })
     all_reviews=[]
     reviews_href = tree.xpath("string(//section[@aria-labelledby='critics-reviews-label']//rt-button/@href)").strip()
@@ -151,35 +150,32 @@ def get_movie_data(movie_url):
 
 create_db()    
 all_url = main("https://www.rottentomatoes.com/browse/movies_in_theaters/sort:newest")
-for i in all_url:
-    data = (get_movie_data(i))
-    with open("output_movie.json","w",encoding="utf-8") as f:
-        json.dump(data,f)
-    break
 
-# with ThreadPoolExecutor(max_workers=5) as e:
-#     result = e.map(get_movie_data,all_url)
-#     conn,cur = connction()
-#     for r in result:
-#         if not r:
-#             continue
-#         cur.execute('''
-#         insert into movies(movie_name,score,description,img,reviews_count,videos,want_to_know,cast_and_crew,all_reviews) values(%s,%s,%s,%s,%s,%s,%s,%s,%s)
-#         ''',(
-#         r.get('movie_name'),
-#         r.get('score'),
-#         r.get('desc'),
-#         r.get('img'),
-#         r.get('reviews_count'),
-#         json.dumps(r.get('videos')),
-#         r.get('want_to_know'),
-#         json.dumps(r.get('cast')),
-#         json.dumps(r.get('all_reviews'))
+with ThreadPoolExecutor(max_workers=5) as e:
+    result = e.map(get_movie_data,all_url)
+    conn,cur = connction()
+    for r in result:
+        if not r:
+            continue
+        cur.execute('''
+        insert into movies(movie_name,score,description,img,reviews_count,videos,want_to_know,cast_and_crew,all_reviews) values(%s,%s,%s,%s,%s,%s,%s,%s,%s)
+        ''',(
+        r.get('movie_name'),
+        r.get('score'),
+        r.get('desc'),
+        r.get('img'),
+        r.get('reviews_count'),
+        json.dumps(r.get('videos')),
+        r.get('want_to_know'),
+        json.dumps(r.get('cast')),
+        json.dumps(r.get('all_reviews'))
 
-#         )) 
-#     conn.commit()
-    
-# print("all done")
-# conn.close()
+        )) 
+    conn.commit()
+et = time.time()
+print("all done")
+print(et-st)
+
+conn.close()
 
 
