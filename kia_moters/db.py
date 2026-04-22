@@ -9,7 +9,7 @@ mydb = mysql.connector.connect(
 mycursor = mydb.cursor()
 
 sql_query = """
-CREATE TABLE IF NOT EXISTS dealers (
+CREATE TABLE IF NOT EXISTS dealers1 (
     id INT AUTO_INCREMENT PRIMARY KEY,
     website VARCHAR(255),
     dealer_name VARCHAR(255),
